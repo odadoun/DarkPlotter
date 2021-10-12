@@ -10,8 +10,6 @@ import requests
 from pprint import pprint
 from pandas.io.json import json_normalize
 import ssl
-from bs4 import BeautifulSoup
-from github import Github
 import json
 from bokeh.palettes import Spectral
 #output_notebook(hide_banner=True)
