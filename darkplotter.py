@@ -55,7 +55,7 @@ class DMplotter():
         return exp_pd
 
     def getfig(self,mypandas=None):
-        mypd = {}
+        mypd = pd.DataFrame
         if not mypandas.empty:
             mypd = mypandas
         xmax, ymax = [-1.]*2
@@ -68,11 +68,9 @@ class DMplotter():
         for i, file in enumerate(pathfile):
             exp=file.split('/')[-1].replace('.txt','')
             tmp = pd.read_csv(file,comment='#',names=['x','y'],sep='\s+', engine='python')
-            #print(exp,tmp['x'],tmp['y'])
             tmp=tmp.dropna()
             tmp['x']=tmp['x'].astype('float')
             tmp['y']=tmp['y'].astype('float')
-
 
             xmin, xmax, ymin, ymax = min(xmin,tmp.x.min()), max(xmax,tmp.x.max()), min(ymin,tmp.y.min()), max(ymax,tmp.y.max())
             self.allplots[exp]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],name=exp, source = ColumnDataSource(tmp))

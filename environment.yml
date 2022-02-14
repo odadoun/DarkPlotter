@@ -1,0 +1,11 @@
+#this is for binder
+name: darkplotter-environment
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - numpy
+  - pip
+  - pip:
+    - lxml
+    - bs4 
