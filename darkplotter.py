@@ -2,6 +2,7 @@
 from bokeh.plotting import figure, output_file, show,output_notebook,curdoc
 from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup
 from bokeh.models.glyphs import Line
+from bokeh.models import Legend
 
 from bokeh.layouts import column, row
 import pandas as pd
@@ -73,7 +74,8 @@ class DMplotter():
             tmp['y']=tmp['y'].astype('float')
 
             xmin, xmax, ymin, ymax = min(xmin,tmp.x.min()), max(xmax,tmp.x.max()), min(ymin,tmp.y.min()), max(ymax,tmp.y.max())
-            self.allplots[exp]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],name=exp, source = ColumnDataSource(tmp))
+            self.allplots[exp]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
+                    name=exp,source = ColumnDataSource(tmp))
         self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
         return self.allplots
 
@@ -82,6 +84,14 @@ class DMplotter():
         self.fig.y_range=Range1d(self.figlimits['ymin'], self.figlimits['ymax'])
         self.fig.xaxis.axis_label = r"$$\mathrm{\color{white}WIMP~Mass~GeV/c^{2}}$$"
         self.fig.yaxis.axis_label = r"$$\mathrm{\color{white}WIMP-Nucleon~Cross~Section~cm^2}$$"
+        legend_it=[]
+        for k,v in plots.items():
+            legend_it.append((k, [v]))
+        legend = Legend(items=legend_it)
+        legend.click_policy="mute"
+
+        self.fig.add_layout(legend, 'right')
+
         curdoc().theme = 'dark_minimal'
 
         checkbox = CheckboxGroup(labels=list(plots.keys()), active=list(range(len(plots))), width=100)
@@ -94,5 +104,6 @@ class DMplotter():
 
         checkbox.js_on_change('active', callback)
         curdoc().theme = 'dark_minimal'
-        layout = row(self.fig,checkbox)
+        #layout = row(self.fig,checkbox)
+        layout=self.fig
         show(layout)
