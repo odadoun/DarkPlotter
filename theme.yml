@@ -1,0 +1,12 @@
+attrs:
+    Figure:
+        background_fill_color: '#FFFFFF'
+        border_fill_color: '#FFFFFF'
+        outline_line_color: '#000000'
+    Axis:
+        axis_line_color: !!null
+    Grid:
+        grid_line_alpha: .3
+        grid_line_color: '#000000'
+    Title:
+        text_color: "white"
