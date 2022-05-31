@@ -92,7 +92,7 @@ class DMplotter():
 
         self.fig.add_layout(legend, 'right')
 
-        curdoc().theme = 'dark_minimal'
+        curdoc().theme = 'light_minimal'
 
         checkbox = CheckboxGroup(labels=list(plots.keys()), active=list(range(len(plots))), width=100)
         callback = CustomJS(args=dict(lines=list(plots.values()), checkbox=checkbox),
@@ -103,7 +103,7 @@ class DMplotter():
         """)
 
         checkbox.js_on_change('active', callback)
-        curdoc().theme = 'dark_minimal'
+        curdoc().theme = 'light_minimal'
         #layout = row(self.fig,checkbox)
         layout=self.fig
         show(layout)
