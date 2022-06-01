@@ -3,17 +3,17 @@ from bokeh.plotting import figure, output_file, show,output_notebook,curdoc
 from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup
 from bokeh.models.glyphs import Line
 from bokeh.models import Legend
-
+from bokeh.themes import Theme
 from bokeh.layouts import column, row
 import pandas as pd
 from bokeh.io import curdoc
-from bokeh.palettes import Spectral4
+from bokeh.palettes import Category10
 import requests
 from pprint import pprint
 from pandas.io.json import json_normalize
 import ssl
 import json
-from bokeh.palettes import Spectral
+from bokeh.palettes import Category10
 from bs4 import BeautifulSoup as bs
 import requests
 import numpy as np
@@ -45,7 +45,20 @@ class DMplotter():
     @staticmethod
     def reportedexp(url='https://github.com/odadoun/DarkPlotter/tree/main/WIMPLimits/'):
         exp_pd=pd.DataFrame(columns = ['url','files'])
-        for i in ['SDn/','SDp/']:#,'SI/']:
+        for i in ['SDn/']:#,'SI/']:
+            res = requests.get(url+i)
+            soup = bs(res.text, 'lxml')
+            file = soup.find_all('a',class_="js-navigation-open")
+            files=[]
+            [ files.append(i.text) for i in file if  '.txt' in i.text ]
+            path='https://raw.githubusercontent.com/odadoun/DarkPlotter/main/WIMPLimits/'
+            exp_pd.loc[len(exp_pd)]=[path+i,files]
+        return exp_pd
+    
+    @staticmethod
+    def reportedsim(url='https://github.com/odadoun/DarkPlotter/tree/main/WIMPLimits/'):
+        exp_pd=pd.DataFrame(columns = ['url','files'])
+        for i in ['SDp/']:#,'SI/']:
             res = requests.get(url+i)
             soup = bs(res.text, 'lxml')
             file = soup.find_all('a',class_="js-navigation-open")
@@ -61,8 +74,8 @@ class DMplotter():
             mypd = mypandas
         xmax, ymax = [-1.]*2
         xmin, ymin = [1.e6]*2
-        nbcolors=10
-        palette = Spectral[nbcolors]
+        nbcolors=7
+        palette = Category10[nbcolors]
         dropexp = ['DEAP-3600.txt','DEAP3600.txt']
 
         pathfile=mypd.apply(lambda x:[x['url']+i for i in x['files'] if i not in dropexp],axis = 1).explode()
@@ -72,27 +85,53 @@ class DMplotter():
             tmp=tmp.dropna()
             tmp['x']=tmp['x'].astype('float')
             tmp['y']=tmp['y'].astype('float')
+            
 
             xmin, xmax, ymin, ymax = min(xmin,tmp.x.min()), max(xmax,tmp.x.max()), min(ymin,tmp.y.min()), max(ymax,tmp.y.max())
             self.allplots[exp]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
                     name=exp,source = ColumnDataSource(tmp))
         self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
         return self.allplots
+    
+    def getfig1(self,mypandas=None):
+        mypd = pd.DataFrame
+        if not mypandas.empty:
+            mypd = mypandas
+        xmax, ymax = [-1.]*2
+        xmin, ymin = [1.e6]*2
+        nbcolors=7
+        palette = Category10[nbcolors]
+        dropexp = ['DEAP-3600.txt','DEAP3600.txt']
+
+        pathfile=mypd.apply(lambda x:[x['url']+i for i in x['files'] if i not in dropexp],axis = 1).explode()
+        for i, file in enumerate(pathfile):
+            exp=file.split('/')[-1].replace('.txt','')
+            tmp = pd.read_csv(file,comment='#',names=['x','y'],sep='\s+', engine='python')
+            tmp=tmp.dropna()
+            tmp['x']=tmp['x'].astype('float')
+            tmp['y']=tmp['y'].astype('float')
+            
+
+            xmin, xmax, ymin, ymax = min(xmin,tmp.x.min()), max(xmax,tmp.x.max()), min(ymin,tmp.y.min()), max(ymax,tmp.y.max())
+            self.allplots[exp]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
+                    name=exp,source = ColumnDataSource(tmp),line_dash="4 4")
+        self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
+        return self.allplots
 
     def plot(self,plots):
         self.fig.x_range=Range1d(self.figlimits['xmin'], self.figlimits['xmax'])
         self.fig.y_range=Range1d(self.figlimits['ymin'], self.figlimits['ymax'])
-        self.fig.xaxis.axis_label = r"$$\mathrm{\color{white}WIMP~Mass~GeV/c^{2}}$$"
-        self.fig.yaxis.axis_label = r"$$\mathrm{\color{white}WIMP-Nucleon~Cross~Section~cm^2}$$"
+        self.fig.xaxis.axis_label = r"WIMP~Mass~GeV/c²"
+        self.fig.yaxis.axis_label = r"WIMP-Nucleon~Cross~Section~cm²"
         legend_it=[]
         for k,v in plots.items():
             legend_it.append((k, [v]))
         legend = Legend(items=legend_it)
-        legend.click_policy="mute"
+        legend.click_policy="hide"
 
         self.fig.add_layout(legend, 'right')
 
-        curdoc().theme = 'light_minimal'
+        curdoc().theme = Theme(filename="./theme.yml")
 
         checkbox = CheckboxGroup(labels=list(plots.keys()), active=list(range(len(plots))), width=100)
         callback = CustomJS(args=dict(lines=list(plots.values()), checkbox=checkbox),
@@ -103,7 +142,7 @@ class DMplotter():
         """)
 
         checkbox.js_on_change('active', callback)
-        curdoc().theme = 'light_minimal'
+        curdoc().theme = Theme(filename="./theme.yml")
         #layout = row(self.fig,checkbox)
         layout=self.fig
         show(layout)
