@@ -46,8 +46,4 @@ fig.line(line_width=2,name='collaboration1',source=source1)
 fig.line(line_width=2,name='collaboration2',source=source2)
 fig.line(line_width=2,name='collaboration3',source=source3)
 
-select = Select(title="Option:", value="source",
-                options=["graphcc2","gcoupp","cresst2","Ggxenon100run8profilelimit"])
- 
-show(widgetbox(select))
 show(fig)
