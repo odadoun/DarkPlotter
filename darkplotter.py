@@ -43,29 +43,25 @@ class DMplotter():
     #    return d
 
     @staticmethod
-    def reportedexp(url='https://github.com/odadoun/DarkPlotter/tree/main/WIMPLimits/'):
+    def getdata(**kwargs):
+        '''
+        getdata : retrieve data from simulation or experiment 
+        '''
+        url=kwargs.get('url','https://github.com/odadoun/DarkPlotter/tree/main/WIMPLimits/')
+        typeofdata=kwargs.get('typeofdata','simulation')
         exp_pd=pd.DataFrame(columns = ['url','files'])
-        for i in ['SDn/']:#,'SI/']:
-            res = requests.get(url+i)
-            soup = bs(res.text, 'lxml')
-            file = soup.find_all('a',class_="js-navigation-open")
-            files=[]
-            [ files.append(i.text) for i in file if  '.txt' in i.text ]
-            path='https://raw.githubusercontent.com/odadoun/DarkPlotter/main/WIMPLimits/'
-            exp_pd.loc[len(exp_pd)]=[path+i,files]
-        return exp_pd
-    
-    @staticmethod
-    def reportedsim(url='https://github.com/odadoun/DarkPlotter/tree/main/WIMPLimits/'):
-        exp_pd=pd.DataFrame(columns = ['url','files'])
-        for i in ['SDp/']:#,'SI/']:
-            res = requests.get(url+i)
-            soup = bs(res.text, 'lxml')
-            file = soup.find_all('a',class_="js-navigation-open")
-            files=[]
-            [ files.append(i.text) for i in file if  '.txt' in i.text ]
-            path='https://raw.githubusercontent.com/odadoun/DarkPlotter/main/WIMPLimits/'
-            exp_pd.loc[len(exp_pd)]=[path+i,files]
+        folders_dico={'simulation':'SDp','experiment':'SDn'}
+        if typeofdata in folders_dico.keys():
+            for i in [folders_dico[typeofdata]]:
+                res = requests.get(url+i)
+                soup = bs(res.text, 'lxml')
+                file = soup.find_all('a',class_="js-navigation-open")
+                files=[]
+                [ files.append(i.text) for i in file if  '.txt' in i.text ]
+                path='https://raw.githubusercontent.com/odadoun/DarkPlotter/main/WIMPLimits/'
+                exp_pd.loc[len(exp_pd)]=[path+i,files]
+        else:
+            raise TypeError('typeofdata not in the list')
         return exp_pd
 
     def getfig(self,mypandas=None):
@@ -85,14 +81,14 @@ class DMplotter():
             tmp=tmp.dropna()
             tmp['x']=tmp['x'].astype('float')
             tmp['y']=tmp['y'].astype('float')
-            
+
 
             xmin, xmax, ymin, ymax = min(xmin,tmp.x.min()), max(xmax,tmp.x.max()), min(ymin,tmp.y.min()), max(ymax,tmp.y.max())
             self.allplots[exp]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
                     name=exp,source = ColumnDataSource(tmp))
         self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
         return self.allplots
-    
+
     def getfig1(self,mypandas=None):
         mypd = pd.DataFrame
         if not mypandas.empty:
@@ -110,7 +106,7 @@ class DMplotter():
             tmp=tmp.dropna()
             tmp['x']=tmp['x'].astype('float')
             tmp['y']=tmp['y'].astype('float')
-            
+
 
             xmin, xmax, ymin, ymax = min(xmin,tmp.x.min()), max(xmax,tmp.x.max()), min(ymin,tmp.y.min()), max(ymax,tmp.y.max())
             self.allplots[exp]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
