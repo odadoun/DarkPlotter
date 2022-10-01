@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup as bs
 import requests
 import numpy as np
 import pandas as pd
-#output_notebook(hide_banner=True)
+output_notebook(hide_banner=True)
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -28,7 +28,6 @@ class DMplotter():
         <b>Expriment</b>:$name<br>
         <b>M </b> = @y cm<sup>2</sup>  <br>
         <b>&sigma;</b> = @x GeV/c<sup>2</sup> <br>
-
         """
         self.figlimits = {}
         self.fig = None
