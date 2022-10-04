@@ -22,17 +22,11 @@ output_notebook(hide_banner=True)
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
-class DMplotter():
+class DMdata():
     def __init__(self):
-        self.tooltips = """
-        <b>Expriment</b>:$name<br>
-        <b>M </b> = @y cm<sup>2</sup>  <br>
-        <b>&sigma;</b> = @x GeV/c<sup>2</sup> <br>
-        """
-        self.figlimits = {}
-        self.fig = None
+        self.mypandas = pd.DataFrame()
 
-    def getmetadata(self,**kwargs):
+    def getmetadataOLD(self,**kwargs):
         '''
         getmetadata : retrieve metedata information and retrieve a pandas
         url, folder in the url, files
@@ -52,7 +46,7 @@ class DMplotter():
         exp_pd=pd.DataFrame({'url':path,'files':files})
         return exp_pd
 
-    def getdata(self,**kwargs):
+    def getdataOLD(self,**kwargs):
         '''
         retrieve data from metadata
         '''
@@ -74,20 +68,69 @@ class DMplotter():
                 exp_pd=pd.concat([exp_pd,pd.DataFrame({'exp':exp,'x':[tmp['x'].to_list()],'y':[tmp['y'].to_list()]})])
         return exp_pd.reset_index(drop=True)
 
-    def getfig(self,mypandas=None):
+    def githubpath2raw(self,**kwargs):
+        url=kwargs.get('url','https://github.com/odadoun/DarkPlotter/tree/NewGraphicToAdd/json/')
+        urlraw='https://raw.githubusercontent.com/odadoun/DarkPlotter/NewGraphicToAdd/json/'
+        res = requests.get(url)
+        soup = bs(res.text, 'lxml')
+        nav = soup.find_all('a',class_="js-navigation-open")
+        files = [ i.text for i in nav if '.json' in i.text  ]
+        if files:
+            path = [ urlraw + i for i in files ]
+        else:
+            raise Exception('Nothing to parse in this folder ...')
+        exp_pd=pd.DataFrame({'rawurl':path})
+        return exp_pd
+
+    def uploadexperiement(self,**kwargs):
+        default = 'https://raw.githubusercontent.com/odadoun/DarkPlotter/NewGraphicToAdd/json/SI-CDMS-CDMS%20II%2C%20Reanalysis%20LT-5c87c458d484949dedf45757e811d495.json'
+        url = kwargs.get('url',default)
+        if not isinstance(url,list):
+            url=[url]
+        for i in url:
+            tmp = pd.read_json(i.replace(' ','%20'))
+            tmp = tmp.apply(lambda x: x.to_list() if x.name in ['x','y'] else x[0])
+            if self.mypandas.empty:
+                self.mypandas = pd.DataFrame(data={i:[tmp[i]] for i in tmp.index})
+            else:
+                if tmp['experiment'] not in self.mypandas.experiment.to_list():
+                    self.mypandas = pd.concat([self.mypandas,pd.DataFrame(data={i:[tmp[i]] for i in tmp.index})])
+        self.mypandas = self.mypandas.loc[~self.mypandas['experiment'].isin([''])]
+
+    def getmetadata(self):
+        return self.mypandas.drop(columns=['x','y']).set_index('experiment')
+
+    def getdata(self):
+        return self.mypandas[['experiment','x','y']].set_index('experiment')
+
+
+
+class DMplotter():
+    def __init__(self):
+        self.tooltips = """
+        <b>Expriment</b>:$name<br>
+        <b>M </b> = @y cm<sup>2</sup>  <br>
+        <b>&sigma;</b> = @x GeV/c<sup>2</sup> <br>
+        """
+        self.figlimits = {}
+        self.fig = None
+
+    def plot(self,mypandas=None):
         mypd = mypandas
+        if mypd.index=='experiment':
+            mypd = mypd.reset_index()
         self.fig = figure(plot_width=800, plot_height=600,tooltips=self.tooltips,x_axis_type="log",y_axis_type='log')
         if not isinstance(mypandas,list):
             mypd =[ mypandas ]
         mypd = pd.concat(mypd)
-        experiments=mypd.exp.unique()
+        experiments=mypd.experiment.unique()
         xmax, ymax = 2*[-1.]
         xmin, ymin = 2*[1.e6]
         nbcolors=7
         palette = Category10[nbcolors]
         allplots={}
         for i,j in enumerate(experiments):
-            focus=mypd.loc[mypd.exp==j]
+            focus=mypd.loc[mypd.experiment==j]
             focus=focus.explode(['x','y'])
             allplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
                     name=j,source = ColumnDataSource(focus))
@@ -100,8 +143,8 @@ class DMplotter():
         fig = self.fig
         fig.x_range=Range1d(self.figlimits['xmin'], self.figlimits['xmax'])
         fig.y_range=Range1d(self.figlimits['ymin'], self.figlimits['ymax'])
-        fig.xaxis.axis_label = r"WIMP~Mass~GeV/c²"
-        fig.yaxis.axis_label = r"WIMP-Nucleon~Cross~Section~cm²"
+        fig.xaxis.axis_label = r"WIMP Mass GeV/c²"
+        fig.yaxis.axis_label = r"WIMP-Nucleon Cross Section cm²"
 
         legend_it=[]
         for k,v in dico.items():
