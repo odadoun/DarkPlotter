@@ -117,12 +117,12 @@ class DMplotter():
 
     def plot(self,mypandas=None):
         mypd = mypandas
-        if mypd.index=='experiment':
-            mypd = mypd.reset_index()
         self.fig = figure(plot_width=800, plot_height=600,tooltips=self.tooltips,x_axis_type="log",y_axis_type='log')
         if not isinstance(mypandas,list):
             mypd =[ mypandas ]
         mypd = pd.concat(mypd)
+        if mypd.index.name == 'experiment':
+            mypd = mypd.reset_index()
         experiments=mypd.experiment.unique()
         xmax, ymax = 2*[-1.]
         xmin, ymin = 2*[1.e6]
