@@ -69,8 +69,8 @@ class DMdata():
         return exp_pd.reset_index(drop=True)
 
     def githubpath2raw(self,**kwargs):
-        url=kwargs.get('url','https://github.com/odadoun/DarkPlotter/tree/NewGraphicToAdd/json/')
-        urlraw='https://raw.githubusercontent.com/odadoun/DarkPlotter/NewGraphicToAdd/json/'
+        url=kwargs.get('url','https://github.com/odadoun/DarkPlotter/tree/main/json/')
+        urlraw='https://raw.githubusercontent.com/odadoun/DarkPlotter/main/json/'
         res = requests.get(url)
         soup = bs(res.text, 'lxml')
         nav = soup.find_all('a',class_="js-navigation-open")
