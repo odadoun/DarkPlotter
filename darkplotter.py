@@ -98,10 +98,10 @@ class DMdata():
         self.mypandas = self.mypandas.loc[~self.mypandas['experiment'].isin([''])]
 
     def getmetadata(self):
-        return self.mypandas.drop(columns=['x','y']).set_index('experiment')
+        return self.mypandas.drop(columns=['x','y','y-units']).set_index('experiment')
 
     def getdata(self):
-        return self.mypandas[['experiment','x','y']].set_index('experiment')
+        return self.mypandas[['experiment','x','y','y-units']].set_index('experiment')
 
 
 
@@ -131,6 +131,20 @@ class DMplotter():
         allplots={}
         for i,j in enumerate(experiments):
             focus=mypd.loc[mypd.experiment==j]
+            #print(focus['y-units'].item())
+            if focus['y-units'].item() == 'fb':
+                scale = 1.E-39
+            if focus['y-units'].item() == 'cm^2':
+                scale = 1.
+            if focus['y-units'].item() == 'pb':
+                scale = 1.E-36
+            if focus['y-units'].item() == 'zb':
+                scale = 1.E-45
+            if focus['y-units'].item() == 'ub':
+                scale = 1.E-30
+
+            for i, s in enumerate(focus.y.item()):
+                focus.y.item()[i] = s*scale
             focus=focus.explode(['x','y'])
             allplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
                     name=j,source = ColumnDataSource(focus))
