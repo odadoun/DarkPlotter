@@ -24,53 +24,13 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 class DMdata():
     def __init__(self):
+        self.url    = 'https://github.com/odadoun/DarkPlotter/tree/main/json/'
+        self.rawurl = 'https://raw.githubusercontent.com/odadoun/DarkPlotter/main/json/'
         self.mypandas = pd.DataFrame()
 
-    def getmetadataOLD(self,**kwargs):
-        '''
-        getmetadata : retrieve metedata information and retrieve a pandas
-        url, folder in the url, files
-        '''
-        url=kwargs.get('url','https://github.com/odadoun/DarkPlotter/tree/main/WIMPLimits/')
-        folder=kwargs.get('folder','SDp/')
-        res = requests.get(url+folder)
-        soup = bs(res.text, 'lxml')
-        nav = soup.find_all('a',class_="js-navigation-open")
-        files = [ i.text for i in nav if '.txt' in i.text  ]
-        if files:
-            path = 'https://raw.githubusercontent.com/odadoun/DarkPlotter/main/WIMPLimits/'+folder
-        else:
-            files = url.split('/')[-1]
-            path =  url.replace(files,'')
-            files = [files]
-        exp_pd=pd.DataFrame({'url':path,'files':files})
-        return exp_pd
-
-    def getdataOLD(self,**kwargs):
-        '''
-        retrieve data from metadata
-        '''
-        mypd = self.getmetadata(**kwargs)
-        exp_pd = pd.DataFrame(columns = ['exp','x','y'])
-        dropexp = ['DEAP-3600.txt','DEAP3600.txt']
-        mypd = mypd.loc[~mypd.files.isin(dropexp)]
-        pathfile = mypd.apply(lambda x:x['url']+x['files'],axis = 1)
-        for i, file in enumerate(pathfile):
-            exp = file.split('/')[-1].replace('.txt','')
-            tmp = pd.read_csv(file,comment='#',names=['x','y'],sep='\s+', engine='python')
-            tmp['x'] = tmp['x'].astype('float')
-            tmp['y'] = tmp['y'].astype('float')
-            if i==0:
-                exp_pd['exp']=[exp]
-                exp_pd['x']=[tmp['x'].to_list()]
-                exp_pd['y']=[tmp['y'].to_list()]
-            else:
-                exp_pd=pd.concat([exp_pd,pd.DataFrame({'exp':exp,'x':[tmp['x'].to_list()],'y':[tmp['y'].to_list()]})])
-        return exp_pd.reset_index(drop=True)
-
     def githubpath2raw(self,**kwargs):
-        url=kwargs.get('url','https://github.com/odadoun/DarkPlotter/tree/main/json/')
-        urlraw='https://raw.githubusercontent.com/odadoun/DarkPlotter/main/json/'
+        url = kwargs.get('url',self.url)
+        urlraw = self.rawurl
         res = requests.get(url)
         soup = bs(res.text, 'lxml')
         nav = soup.find_all('a',class_="js-navigation-open")
@@ -83,7 +43,7 @@ class DMdata():
         return exp_pd
 
     def uploadexperiement(self,**kwargs):
-        default = 'https://raw.githubusercontent.com/odadoun/DarkPlotter/NewGraphicToAdd/json/SI-CDMS-CDMS%20II%2C%20Reanalysis%20LT-5c87c458d484949dedf45757e811d495.json'
+        default = self.rawurl + 'SI-CDMS-CDMS%20II%2C%20Reanalysis%20LT-5c87c458d484949dedf45757e811d495.json'
         url = kwargs.get('url',default)
         if not isinstance(url,list):
             url=[url]
