@@ -58,10 +58,10 @@ class DMdata():
         self.mypandas = self.mypandas.loc[~self.mypandas['experiment'].isin([''])]
 
     def getmetadata(self):
-        return self.mypandas.drop(columns=['x','y','y-units']).set_index('experiment')
+        return self.mypandas.drop(columns=['x','y']).set_index('experiment')
 
     def getdata(self):
-        return self.mypandas[['experiment','x','y','y-units']].set_index('experiment')
+        return self.mypandas[['experiment','x','y']].set_index('experiment')
 
 
 
