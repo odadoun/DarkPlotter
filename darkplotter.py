@@ -57,13 +57,13 @@ class DMdata():
                     self.mypandas = pd.concat([self.mypandas,pd.DataFrame(data={i:[tmp[i]] for i in tmp.index})])
         self.mypandas = self.mypandas.loc[~self.mypandas['experiment'].isin([''])]
 
-    def getmetadata(self):
+    def get_metadata(self):
         return self.mypandas.drop(columns=['x','y']).set_index('experiment')
 
-    def getdata(self):
+    def get_data(self):
         return self.mypandas[['experiment','x','y']].set_index('experiment')
     
-    def getpandas(self):
+    def get_pandas(self):
         return self.mypandas
 
 
