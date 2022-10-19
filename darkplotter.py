@@ -64,7 +64,7 @@ class DMdata():
         return self.mypandas[['experiment','x','y']].set_index('experiment')
     
     def get_pandas(self):
-        return self.mypandas
+        return self.mypandas.set_index('experiment')
 
 
 class DMplotter():
