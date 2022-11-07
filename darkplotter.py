@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup as bs
 import requests
 import numpy as np
 import pandas as pd
+import sys
 output_notebook(hide_banner=True)
 
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -64,7 +65,27 @@ class DMdata():
         return self.mypandas[['experiment','x','y']].set_index('experiment')
     
     def get_pandas(self):
-        return self.mypandas.set_index('experiment')
+        return self.mypandas.set_index("experiment")
+
+    def get_experiment(self,collaboration="",experiment=""):
+        if collaboration == "":
+            collab = self.mypandas
+            if experiment == "":
+                exp = self.mypandas
+            else :
+                exp = collab[collab["experiment"].apply(lambda x : any(k in x for k in experiment))]
+        else :
+            collab = self.mypandas[self.mypandas["collaboration"].apply(lambda x : any(k in x for k in collaboration))]
+            if experiment == "":
+                exp = collab
+            else :
+                exp = collab[collab["experiment"].apply(lambda x : any(k in x for k in experiment))]
+
+        if len(exp["experiment"].value_counts()) > 0:
+            return exp
+        else:
+            print ("Warning: no experiment exist")
+            sys.exit()
 
 
 class DMplotter():
@@ -77,7 +98,7 @@ class DMplotter():
         self.figlimits = {}
         self.fig = None
 
-    def plot(self,mypandas=None):
+    def plot(self,mypandas=None,massunit="GeV"):
         mypd = mypandas
         self.fig = figure(plot_width=800, plot_height=600,tooltips=self.tooltips,x_axis_type="log",y_axis_type='log')
         if not isinstance(mypandas,list):
@@ -88,9 +109,22 @@ class DMplotter():
         experiments=mypd.experiment.unique()
         xmax, ymax = 2*[-1.]
         xmin, ymin = 2*[1.e6]
+        xunit = massunit
+        zoom = 1.
         nbcolors=7
         palette = Category10[nbcolors]
         allplots={}
+        
+        if xunit == "MeV":
+            zoom = 1e3
+        elif xunit == "GeV":
+            zoom = 1
+        elif xunit == "TeV":
+            zoom = 1e-3
+        else:
+            print("Please choose correct massunit")
+            sys.exit()
+        
         for i,j in enumerate(experiments):
             focus=mypd.loc[mypd.experiment==j]
             #print(focus['y-units'].item())
@@ -104,24 +138,29 @@ class DMplotter():
                 scale = 1.E-45
             if focus['y-units'].item() == 'ub':
                 scale = 1.E-30
-
+            
             for i, s in enumerate(focus.y.item()):
                 focus.y.item()[i] = s*scale
+             
+            for i, s in enumerate(focus.x.item()):
+                focus.x.item()[i] = s*zoom
+            
+            
             focus=focus.explode(['x','y'])
             allplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
                     name=j,source = ColumnDataSource(focus))
             xmin, xmax, ymin, ymax = min(xmin,focus.x.min()), max(xmax,focus.x.max()),\
                                      min(ymin,focus.y.min()), max(ymax,focus.y.max())
             self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
-        self.draw(allplots)
+        self.draw(allplots,massunit)
 
-    def draw(self,dico={}):
+    def draw(self,dico={},massunit="GeV"):
         fig = self.fig
         fig.x_range=Range1d(self.figlimits['xmin'], self.figlimits['xmax'])
         fig.y_range=Range1d(self.figlimits['ymin'], self.figlimits['ymax'])
-        fig.xaxis.axis_label = r"WIMP Mass GeV/c²"
+        fig.xaxis.axis_label = f"WIMP Mass {massunit}/c²"
         fig.yaxis.axis_label = r"WIMP-Nucleon Cross Section cm²"
-
+        
         legend_it=[]
         for k,v in dico.items():
             legend_it.append((k, [v]))
@@ -137,9 +176,10 @@ class DMplotter():
                     lines[i].visible = checkbox.active.includes(i);
             }
         """)
-
+        
         checkbox.js_on_change('active', callback)
         curdoc().theme = Theme(filename="./theme.yml")
         layout = row(fig,checkbox)
+        
         layout=fig
         show(layout)
