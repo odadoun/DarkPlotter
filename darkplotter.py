@@ -129,21 +129,26 @@ class DMplotter():
             focus=mypd.loc[mypd.experiment==j]
             #print(focus['y-units'].item())
             if focus['y-units'].item() == 'fb':
-                scale = 1.E-39
+                yscale = 1.E-39
             if focus['y-units'].item() == 'cm^2':
-                scale = 1.
+                yscale = 1.
             if focus['y-units'].item() == 'pb':
-                scale = 1.E-36
+                yscale = 1.E-36
             if focus['y-units'].item() == 'zb':
-                scale = 1.E-45
+                yscale = 1.E-45
             if focus['y-units'].item() == 'ub':
-                scale = 1.E-30
-            
+                yscale = 1.E-30
+            if focus['x-units'].item() == 'MeV':
+                xscale = 1e-3
+            if focus['x-units'].item() == 'GeV':
+                xscale = 1
+            if focus['x-units'].item() == 'TeV':
+                xscale = 1e3
             for i, s in enumerate(focus.y.item()):
-                focus.y.item()[i] = s*scale
+                focus.y.item()[i] = s*yscale
              
             for i, s in enumerate(focus.x.item()):
-                focus.x.item()[i] = s*zoom
+                focus.x.item()[i] = s*zoom*xscale
             
             
             focus=focus.explode(['x','y'])
