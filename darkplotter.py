@@ -25,8 +25,8 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 class DMdata():
     def __init__(self):
-        self.url    = 'https://github.com/odadoun/DarkPlotter/tree/main/json/'
-        self.rawurl = 'https://raw.githubusercontent.com/odadoun/DarkPlotter/main/json/'
+        self.url    = 'https://github.com/odadoun/DarkPlotter/tree/dev/json/'
+        self.rawurl = 'https://raw.githubusercontent.com/odadoun/DarkPlotter/dev/json/'
         self.mypandas = pd.DataFrame()
 
     def githubpath2raw(self,**kwargs):
@@ -116,7 +116,7 @@ class DMplotter():
         allplots={}
         lineplots={}
         areaplots={}
-        
+        neutrino={}
         if xunit == "MeV":
             zoom = 1e3
         elif xunit == "GeV":
@@ -153,24 +153,25 @@ class DMplotter():
             
             
             focus=focus.explode(['x','y'])
-            #Plot area /testing
-            #areaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color="grey",fill_alpha=0.1,name=j,source = ColumnDataSource(focus))
-            if focus['experiment'].tolist() == 'neutrino':
-                self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.5,name=j,source = ColumnDataSource(focus))
-            lineplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
-                    name=j,source = ColumnDataSource(focus))
-            #allplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
-            #        name=j,source = ColumnDataSource(focus))
-            allplots = dict(areaplots.items()|lineplots.items())
+            #Plot area & neutrino background /testing
+            if mypd.loc[mypd.experiment==j]['collaboration'].item()  == "neutrino":
+                neutrino[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.2,name=j,source = ColumnDataSource(focus))
+            else:    
+                areaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color="grey",fill_alpha=0.1,name=j,source = ColumnDataSource(focus))
+                lineplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
+                        name=j,source = ColumnDataSource(focus))
+            
+            allplots = dict(areaplots.items()|lineplots.items()|neutrino.items())
+            
             xmin, xmax, ymin, ymax = min(xmin,focus.x.min()), max(xmax,focus.x.max()),\
                                      min(ymin,focus.y.min()), max(ymax,focus.y.max())
             self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
      
             #Add labels /testing
-            #labels = LabelSet(x=focus.x.max(),y=(focus.y.min()), text='experiment',x_offset=-100, y_offset=0, source=ColumnDataSource(focus), render_mode='canvas')
-            #self.fig.add_layout(labels)
+            labels = LabelSet(x=focus.x.max(),y=(focus.y.min()), text='experiment',x_offset=-100, y_offset=0, source=ColumnDataSource(focus), render_mode='canvas')
+            self.fig.add_layout(labels)
+        
         self.draw(allplots,massunit)
-        #self.draw(allplots,massunit)
 
     def draw(self,dico={},massunit="GeV"):
         fig = self.fig
