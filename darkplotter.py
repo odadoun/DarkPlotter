@@ -1,6 +1,6 @@
 
 from bokeh.plotting import figure, output_file, show,output_notebook,curdoc
-from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup
+from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup,LabelSet
 from bokeh.models.glyphs import Line
 from bokeh.models import Legend
 from bokeh.themes import Theme
@@ -100,7 +100,7 @@ class DMplotter():
 
     def plot(self,mypandas=None,massunit="GeV"):
         mypd = mypandas
-        self.fig = figure(plot_width=800, plot_height=600,tooltips=self.tooltips,x_axis_type="log",y_axis_type='log')
+        self.fig = figure(plot_width=1000, plot_height=600,tooltips=self.tooltips,x_axis_type="log",y_axis_type='log')
         if not isinstance(mypandas,list):
             mypd =[ mypandas ]
         mypd = pd.concat(mypd)
@@ -114,6 +114,8 @@ class DMplotter():
         nbcolors=7
         palette = Category10[nbcolors]
         allplots={}
+        lineplots={}
+        areaplots={}
         
         if xunit == "MeV":
             zoom = 1e3
@@ -146,26 +148,40 @@ class DMplotter():
                 xscale = 1e3
             for i, s in enumerate(focus.y.item()):
                 focus.y.item()[i] = s*yscale
-             
             for i, s in enumerate(focus.x.item()):
                 focus.x.item()[i] = s*zoom*xscale
             
             
             focus=focus.explode(['x','y'])
-            allplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
+            #Plot area /testing
+            #areaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color="grey",fill_alpha=0.1,name=j,source = ColumnDataSource(focus))
+            if focus['experiment'].tolist() == 'neutrino':
+                self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.5,name=j,source = ColumnDataSource(focus))
+            lineplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
                     name=j,source = ColumnDataSource(focus))
+            #allplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
+            #        name=j,source = ColumnDataSource(focus))
+            allplots = dict(areaplots.items()|lineplots.items())
             xmin, xmax, ymin, ymax = min(xmin,focus.x.min()), max(xmax,focus.x.max()),\
                                      min(ymin,focus.y.min()), max(ymax,focus.y.max())
             self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
+     
+            #Add labels /testing
+            #labels = LabelSet(x=focus.x.max(),y=(focus.y.min()), text='experiment',x_offset=-100, y_offset=0, source=ColumnDataSource(focus), render_mode='canvas')
+            #self.fig.add_layout(labels)
         self.draw(allplots,massunit)
+        #self.draw(allplots,massunit)
 
     def draw(self,dico={},massunit="GeV"):
         fig = self.fig
         fig.x_range=Range1d(self.figlimits['xmin'], self.figlimits['xmax'])
         fig.y_range=Range1d(self.figlimits['ymin'], self.figlimits['ymax'])
-        fig.xaxis.axis_label = f"WIMP Mass {massunit}/c²"
-        fig.yaxis.axis_label = r"WIMP-Nucleon Cross Section cm²"
-        
+        fig.xaxis.axis_label = f"WIMP Mass [{massunit}/c²]"
+        fig.yaxis.axis_label = r"WIMP-Nucleon Cross Section [cm²]"
+        fig.axis.axis_label_text_font = 'helvetica' #aixs label font
+        fig.axis.axis_label_text_font_size = '12pt'#axis label font size
+        fig.axis.axis_label_text_font_style = 'normal' #axis label font style
+        fig.axis.major_label_text_font_size = '11pt' #Tick label size
         legend_it=[]
         for k,v in dico.items():
             legend_it.append((k, [v]))
@@ -187,4 +203,5 @@ class DMplotter():
         layout = row(fig,checkbox)
         
         layout=fig
+        
         show(layout)
