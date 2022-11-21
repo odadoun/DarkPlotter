@@ -1,6 +1,6 @@
 
 from bokeh.plotting import figure, output_file, show,output_notebook,curdoc
-from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup,LabelSet
+from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup,LabelSet,LinearAxis,LogAxis
 from bokeh.models.glyphs import Line
 from bokeh.models import Legend
 from bokeh.themes import Theme
@@ -177,12 +177,17 @@ class DMplotter():
         fig = self.fig
         fig.x_range=Range1d(self.figlimits['xmin'], self.figlimits['xmax'])
         fig.y_range=Range1d(self.figlimits['ymin'], self.figlimits['ymax'])
-        fig.xaxis.axis_label = f"WIMP Mass [{massunit}/c²]"
+        fig.extra_y_ranges = {"pb": Range1d(1e36*self.figlimits['ymin'], 1e36*self.figlimits['ymax'])}
+       
         fig.yaxis.axis_label = r"WIMP-Nucleon Cross Section [cm²]"
+        fig.xaxis.axis_label = f"WIMP Mass [{massunit}/c²]"
+        fig.add_layout(LogAxis(y_range_name="pb",axis_label=r"WIMP-Nucleon Cross Section [pb]"),'right')
+        #fig.yaxis.major_label_orientation = "vertical"        
         fig.axis.axis_label_text_font = 'helvetica' #aixs label font
         fig.axis.axis_label_text_font_size = '12pt'#axis label font size
         fig.axis.axis_label_text_font_style = 'normal' #axis label font style
         fig.axis.major_label_text_font_size = '11pt' #Tick label size
+        
         legend_it=[]
         for k,v in dico.items():
             legend_it.append((k, [v]))
