@@ -116,7 +116,8 @@ class DMplotter():
         allplots={}
         lineplots={}
         areaplots={}
-        neutrino={}
+        bgplots={}
+        bgareaplots={}
         if xunit == "MeV":
             zoom = 1e3
         elif xunit == "GeV":
@@ -151,20 +152,23 @@ class DMplotter():
             for i, s in enumerate(focus.x.item()):
                 focus.x.item()[i] = s*zoom*xscale
             
-            
             focus=focus.explode(['x','y'])
+
             #Plot area & neutrino background /testing
-            if mypd.loc[mypd.experiment==j]['collaboration'].item()  == "neutrino":
-                neutrino[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.2,name=j,source = ColumnDataSource(focus))
-            else:    
+            if mypd.loc[mypd.experiment==j]['category'].item()  == "Background":
+                bgareaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.4,name=j,source = ColumnDataSource(focus))
+                bgplots[j]=self.fig.line(x = 'x', y = 'y',line_width=4,line_color="orange",line_alpha=0.8,name=j,source = ColumnDataSource(focus),line_dash="dashed")
+            elif mypd.loc[mypd.experiment==j]['category'].item()  == "Limit":    
                 areaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color="grey",fill_alpha=0.1,name=j,source = ColumnDataSource(focus))
                 lineplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
                         name=j,source = ColumnDataSource(focus))
             
-            allplots = dict(areaplots.items()|lineplots.items()|neutrino.items())
+            allplots = dict(areaplots.items()|lineplots.items()|bgplots.items()|bgareaplots.items())
             
-            xmin, xmax, ymin, ymax = min(xmin,focus.x.min()), max(xmax,focus.x.max()),\
-                                     min(ymin,focus.y.min()), max(ymax,focus.y.max())
+            #xmin, xmax, ymin, ymax = min(xmin,focus.x.min()), max(xmax,focus.x.max()),\
+            #                         min(ymin,focus.y.min()), max(ymax,focus.y.max())
+            #self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
+            xmin, xmax, ymin, ymax = 5e-1,1e4,1e-50,1e-37
             self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
      
             #Add labels /testing
