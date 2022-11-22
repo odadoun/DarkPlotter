@@ -157,9 +157,10 @@ class DMplotter():
             #Plot area & neutrino background /testing
             if mypd.loc[mypd.experiment==j]['category'].item()  == "Background":
                 bgareaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.4,name=j,source = ColumnDataSource(focus))
-                bgplots[j]=self.fig.line(x = 'x', y = 'y',line_width=4,line_color="orange",line_alpha=0.8,name=j,source = ColumnDataSource(focus),line_dash="dashed")
+                bgplots[j]=self.fig.line(x = 'x', y = 'y',line_width=5,line_color="red",line_alpha=1,name=j,source = ColumnDataSource(focus),line_dash="dashed")
             elif mypd.loc[mypd.experiment==j]['category'].item()  == "Limit":    
-                areaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color="grey",fill_alpha=0.1,name=j,source = ColumnDataSource(focus))
+                areaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color=(232,243,226),fill_alpha=1,name=j,source = ColumnDataSource(focus))
+                areaplots[j].level= 'underlay'
                 lineplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
                         name=j,source = ColumnDataSource(focus))
             
