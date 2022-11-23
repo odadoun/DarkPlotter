@@ -1,6 +1,6 @@
 
 from bokeh.plotting import figure, output_file, show,output_notebook,curdoc
-from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup,LabelSet,LinearAxis,LogAxis
+from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup,LabelSet,LinearAxis,LogAxis,Slider,Label
 from bokeh.models.glyphs import Line
 from bokeh.models import Legend
 from bokeh.themes import Theme
@@ -100,7 +100,7 @@ class DMplotter():
 
     def plot(self,mypandas=None,massunit="GeV"):
         mypd = mypandas
-        self.fig = figure(plot_width=1000, plot_height=600,tooltips=self.tooltips,x_axis_type="log",y_axis_type='log')
+        self.fig = figure(plot_width=1100, plot_height=600,tooltips=self.tooltips,x_axis_type="log",y_axis_type='log')
         if not isinstance(mypandas,list):
             mypd =[ mypandas ]
         mypd = pd.concat(mypd)
@@ -118,6 +118,10 @@ class DMplotter():
         areaplots={}
         bgplots={}
         bgareaplots={}
+        labels={}
+        slider={}
+        callback={}
+        theta=0
         if xunit == "MeV":
             zoom = 1e3
         elif xunit == "GeV":
@@ -155,64 +159,113 @@ class DMplotter():
             focus=focus.explode(['x','y'])
 
             #Plot area & neutrino background /testing
+            #Plot Labels & slider /testing
             if mypd.loc[mypd.experiment==j]['category'].item()  == "Background":
                 bgareaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.4,name=j,source = ColumnDataSource(focus))
                 bgplots[j]=self.fig.line(x = 'x', y = 'y',line_width=5,line_color="red",line_alpha=1,name=j,source = ColumnDataSource(focus),line_dash="dashed")
+                labels[j] = Label(x=0.6,y=1e-49, text=j,x_offset=0, y_offset=0,
+                 text_font='arial',text_font_size='12pt',text_color="black",text_font_style="bold",render_mode='canvas')
             elif mypd.loc[mypd.experiment==j]['category'].item()  == "Limit":    
-                areaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color=(232,243,226),fill_alpha=1,name=j,source = ColumnDataSource(focus))
-                areaplots[j].level= 'underlay'
+                areaplots["Area"+j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color=(232,243,226),fill_alpha=1,name=j,source = ColumnDataSource(focus))
+                areaplots["Area"+j].level= 'underlay'
                 lineplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
                         name=j,source = ColumnDataSource(focus))
+
+                #Adding Sliders
+                slider[j]=Slider(start=0.5*focus.x.min(),end=2*focus.x.max(),value=focus.x.max(),step=-0.05*(focus.x.min()-focus.x.max()),title=j)
+                #Adding Labels
+                labels[j] = Label(x=focus.x.max(),y=(focus.y.iloc[-1]), text=j,x_offset=0, y_offset=0,
+                 text_font='arial',text_color=palette[i%nbcolors],text_font_size='10pt', angle=theta,render_mode='canvas')
+                #Adding Link/Call back
+                callback[j]=CustomJS(args=dict(source=ColumnDataSource(focus),xposition=slider[j],lable=labels[j]),
+                            code = """
+                const data = source.data;
+                var x = xposition.value;
+                //var y = data['y']['x']
+                //var y = min(data['x'], key=lambda xclose:abs(xclose-x));
+                //var x = data['x'];
+                //var y = data['y'];
+                //var pi = Math.PI;
+                //var theta = -1*(xposition.value) * (pi/180);
+                lable['x'] = x;
+                //lable['y'] = 1.1*y;
+                //lable['angle'] = theta;
+                lable.change.emit();
+                """
+                )
+                slider[j].js_on_change('value', callback[j])
+            #slider=Slider(start=0,end=10,value=1,step=1,title='test')
+
+
+            #allplots = dict(areaplots.items()|lineplots.items()|bgplots.items()|bgareaplots.items())
+            allplots = dict(lineplots.items()|bgplots.items())
             
-            allplots = dict(areaplots.items()|lineplots.items()|bgplots.items()|bgareaplots.items())
-            
+            #Plot Range
             #xmin, xmax, ymin, ymax = min(xmin,focus.x.min()), max(xmax,focus.x.max()),\
             #                         min(ymin,focus.y.min()), max(ymax,focus.y.max())
             #self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
-            xmin, xmax, ymin, ymax = 5e-1,1e4,1e-50,1e-37
+            xmin, xmax, ymin, ymax = 5e-1,1e4,1e-50,1e-36
             self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
-     
-            #Add labels /testing
-            labels = LabelSet(x=focus.x.max(),y=(focus.y.min()), text='experiment',x_offset=-100, y_offset=0, source=ColumnDataSource(focus), render_mode='canvas')
-            self.fig.add_layout(labels)
-        
-        self.draw(allplots,massunit)
 
-    def draw(self,dico={},massunit="GeV"):
+            #Add labels /testing
+            self.fig.add_layout(labels[j])
+            #self.fig = column(self.fig, slider)
+
+            
+        self.draw(allplots,slider,massunit)
+
+    def draw(self,dico={},slider={},massunit="GeV"):
         fig = self.fig
         fig.x_range=Range1d(self.figlimits['xmin'], self.figlimits['xmax'])
         fig.y_range=Range1d(self.figlimits['ymin'], self.figlimits['ymax'])
-        fig.extra_y_ranges = {"pb": Range1d(1e36*self.figlimits['ymin'], 1e36*self.figlimits['ymax'])}
+        fig.extra_y_ranges = {"pb": Range1d(1e36*self.figlimits['ymin'], 1e36*self.figlimits['ymax'])} #Second y Aixs
        
         fig.yaxis.axis_label = r"WIMP-Nucleon Cross Section [cm²]"
         fig.xaxis.axis_label = f"WIMP Mass [{massunit}/c²]"
         fig.add_layout(LogAxis(y_range_name="pb",axis_label=r"WIMP-Nucleon Cross Section [pb]"),'right')
         #fig.yaxis.major_label_orientation = "vertical"        
-        fig.axis.axis_label_text_font = 'helvetica' #aixs label font
+        fig.axis.axis_label_text_font = 'times' #aixs label font
         fig.axis.axis_label_text_font_size = '12pt'#axis label font size
-        fig.axis.axis_label_text_font_style = 'normal' #axis label font style
+        fig.axis.axis_label_text_font_style = 'bold' #axis label font style
         fig.axis.major_label_text_font_size = '11pt' #Tick label size
         
+        
+        #Plot Legend
         legend_it=[]
         for k,v in dico.items():
             legend_it.append((k, [v]))
         legend = Legend(items=legend_it)
         legend.click_policy="hide"
         fig.add_layout(legend, 'right')
-        curdoc().theme = Theme(filename="./theme.yml")
 
-        checkbox = CheckboxGroup(labels=list(dico.keys()), active=list(range(len(dico))), width=100)
-        callback = CustomJS(args=dict(lines=list(dico.values()), checkbox=checkbox),
-        code="""
-                for(var i=0; i<lines.length; i++){
-                    lines[i].visible = checkbox.active.includes(i);
-            }
-        """)
+        ''' #Olivier's Code
+        #curdoc().theme = Theme(filename="./theme.yml")
+
+        #checkbox = CheckboxGroup(labels=list(dico.keys()), active=list(range(len(dico))), width=100)
+        #callback = CustomJS(args=dict(lines=list(dico.values()), checkbox=checkbox),
+        #code="""
+        #        for(var i=0; i<lines.length; i++){
+        #            lines[i].visible = checkbox.active.includes(i);
+        #    }
+        #""")
         
-        checkbox.js_on_change('active', callback)
-        curdoc().theme = Theme(filename="./theme.yml")
-        layout = row(fig,checkbox)
-        
+        #checkbox.js_on_change('active', callback)
+        #curdoc().theme = Theme(filename="./theme.yml")
+        #layout = row(fig,checkbox)
+        # 
+
+        slider = Slider(start=0, end=10, value=1, step=.1, title="Stuff")
+        slider.js_on_change("value", CustomJS(code="""
+        console.log('slider: value=' + this.value, this.toString())
+            """))
+            
+
+        layout =row(fig,slider)
+
         layout=fig
         
-        show(layout)
+        show(column(fig,column(slider, width=100)))
+        '''
+        for key in slider:
+            fig = column(fig, slider[key])
+        show(fig)
