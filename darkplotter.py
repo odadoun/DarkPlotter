@@ -1,6 +1,6 @@
 
-from bokeh.plotting import figure, output_file, show,output_notebook,curdoc
-from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup,LabelSet,LinearAxis,LogAxis,Slider,Label
+from bokeh.plotting import figure, output_file, show,output_notebook,curdoc,save
+from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup,LabelSet,LinearAxis,LogAxis,Slider,Label,Dropdown
 from bokeh.models.glyphs import Line
 from bokeh.models import Legend
 from bokeh.themes import Theme
@@ -100,7 +100,8 @@ class DMplotter():
 
     def plot(self,mypandas=None,massunit="GeV"):
         mypd = mypandas
-        self.fig = figure(plot_width=1100, plot_height=600,tooltips=self.tooltips,x_axis_type="log",y_axis_type='log')
+        TOOLS = "pan,wheel_zoom,reset,save"
+        self.fig = figure(plot_width=1100, plot_height=600,tooltips=self.tooltips, tools=TOOLS,x_axis_type="log",y_axis_type='log')
         if not isinstance(mypandas,list):
             mypd =[ mypandas ]
         mypd = pd.concat(mypd)
@@ -172,7 +173,8 @@ class DMplotter():
                         name=j,source = ColumnDataSource(focus))
 
                 #Adding Sliders
-                slider[j]=Slider(start=0.5*focus.x.min(),end=2*focus.x.max(),value=focus.x.max(),step=-0.05*(focus.x.min()-focus.x.max()),title=j)
+                #slider[j]=Slider(start=0.5*focus.x.min(),end=2*focus.x.max(),value=focus.x.max(),step=-0.05*(focus.x.min()-focus.x.max()),title=j)
+                slider[j]=Slider(start=1,end=len(focus.x),value=len(focus.x),step=1,title=j)
                 #Adding Labels
                 labels[j] = Label(x=focus.x.max(),y=(focus.y.iloc[-1]), text=j,x_offset=0, y_offset=0,
                  text_font='arial',text_color=palette[i%nbcolors],text_font_size='10pt', angle=theta,render_mode='canvas')
@@ -180,16 +182,19 @@ class DMplotter():
                 callback[j]=CustomJS(args=dict(source=ColumnDataSource(focus),xposition=slider[j],lable=labels[j]),
                             code = """
                 const data = source.data;
-                var x = xposition.value;
-                //var y = data['y']['x']
-                //var y = min(data['x'], key=lambda xclose:abs(xclose-x));
-                //var x = data['x'];
-                //var y = data['y'];
-                //var pi = Math.PI;
-                //var theta = -1*(xposition.value) * (pi/180);
-                lable['x'] = x;
-                //lable['y'] = 1.1*y;
-                //lable['angle'] = theta;
+                var idx = xposition.value;
+                lable['x'] = data['x'][idx];
+                lable['y'] = 1.1*data['y'][idx];
+                //static float slope(float x1, float y1, float x2,float y2)
+                //    {
+                //    if (x2 - x1 != 0)
+                //            return (y2 - y1) / (x2 - x1);
+                //    return Integer.MAX_VALUE;
+                //    }   
+                //var angle = Math.atan(slope(data['x'][idx-1],data['y'][idx-1],data['x'][idx],data['y'][idx]));
+                //float angle = Math.atan((data['y'][idx]-data['y'][idx-1])/(data['x'][idx]-data['x'][idx-1]));
+                //lable['angle'] = angle;
+                lable['angle'] = Math.atan((data['y'][idx]-data['y'][idx-1])/(data['x'][idx]-data['x'][idx-1]));
                 lable.change.emit();
                 """
                 )
@@ -268,4 +273,7 @@ class DMplotter():
         '''
         for key in slider:
             fig = column(fig, slider[key])
+
+        output_file(filename="DarkPlotter.html", title="WIMP Exclusion Plot")
         show(fig)
+        save(fig)
