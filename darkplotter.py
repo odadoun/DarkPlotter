@@ -101,7 +101,7 @@ class DMplotter():
     def plot(self,mypandas=None,massunit="GeV"):
         mypd = mypandas
         TOOLS = "pan,wheel_zoom,reset,save"
-        self.fig = figure(plot_width=1100, plot_height=600,tooltips=self.tooltips, tools=TOOLS,x_axis_type="log",y_axis_type='log')
+        self.fig = figure(plot_width=1200, plot_height=600,tooltips=self.tooltips, tools=TOOLS,x_axis_type="log",y_axis_type='log')
         if not isinstance(mypandas,list):
             mypd =[ mypandas ]
         mypd = pd.concat(mypd)
