@@ -101,7 +101,7 @@ class DMplotter():
     def plot(self,mypandas=None,massunit="GeV"):
         mypd = mypandas
         TOOLS = "pan,wheel_zoom,reset,save"
-        self.fig = figure(plot_width=1200, plot_height=600,tooltips=self.tooltips, tools=TOOLS,x_axis_type="log",y_axis_type='log')
+        self.fig = figure(plot_width=1200, plot_height=600,tooltips=self.tooltips, tools=TOOLS,x_axis_type="log",y_axis_type='log',sizing_mode="scale_width",height=600, width=1200)
         if not isinstance(mypandas,list):
             mypd =[ mypandas ]
         mypd = pd.concat(mypd)
@@ -159,11 +159,19 @@ class DMplotter():
             
             focus=focus.explode(['x','y'])
 
+            #Plot Range
+            #xmin, xmax, ymin, ymax = min(xmin,focus.x.min()), max(xmax,focus.x.max()),\
+            #                         min(ymin,focus.y.min()), max(ymax,focus.y.max())
+            #self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
+            xmin, xmax, ymin, ymax = 5e-1,1e4,1e-50,1e-36
+            self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
+
+
             #Plot area & neutrino background /testing
             #Plot Labels & slider /testing
             if mypd.loc[mypd.experiment==j]['category'].item()  == "Background":
                 bgareaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.4,name=j,source = ColumnDataSource(focus))
-                bgplots[j]=self.fig.line(x = 'x', y = 'y',line_width=5,line_color="red",line_alpha=1,name=j,source = ColumnDataSource(focus),line_dash="dashed")
+                bgplots[j]=self.fig.line(x = 'x', y = 'y',line_width=6,line_color="red",line_alpha=1,name=j,source = ColumnDataSource(focus),line_dash="dashed")
                 labels[j] = Label(x=0.6,y=1e-49, text=j,x_offset=0, y_offset=0,
                  text_font='arial',text_font_size='12pt',text_color="black",text_font_style="bold",render_mode='canvas')
             elif mypd.loc[mypd.experiment==j]['category'].item()  == "Limit":    
@@ -174,10 +182,10 @@ class DMplotter():
 
                 #Adding Sliders
                 #slider[j]=Slider(start=0.5*focus.x.min(),end=2*focus.x.max(),value=focus.x.max(),step=-0.05*(focus.x.min()-focus.x.max()),title=j)
-                slider[j]=Slider(start=1,end=len(focus.x),value=len(focus.x),step=1,title=j)
+                slider[j]=Slider(start=1,end=len(focus.x),value=len(focus.x),step=1,title=j, sizing_mode="stretch_both")
                 #Adding Labels
                 labels[j] = Label(x=focus.x.max(),y=(focus.y.iloc[-1]), text=j,x_offset=0, y_offset=0,
-                 text_font='arial',text_color=palette[i%nbcolors],text_font_size='10pt', angle=theta,render_mode='canvas')
+                 text_font='arial',text_color=palette[i%nbcolors],text_font_size='12pt', angle=theta,render_mode='canvas',text_align="left")
                 #Adding Link/Call back
                 callback[j]=CustomJS(args=dict(source=ColumnDataSource(focus),xposition=slider[j],lable=labels[j]),
                             code = """
@@ -185,36 +193,24 @@ class DMplotter():
                 var idx = xposition.value;
                 lable['x'] = data['x'][idx];
                 lable['y'] = 1.1*data['y'][idx];
-                //static float slope(float x1, float y1, float x2,float y2)
-                //    {
-                //    if (x2 - x1 != 0)
-                //            return (y2 - y1) / (x2 - x1);
-                //    return Integer.MAX_VALUE;
-                //    }   
                 //var angle = Math.atan(slope(data['x'][idx-1],data['y'][idx-1],data['x'][idx],data['y'][idx]));
-                //float angle = Math.atan((data['y'][idx]-data['y'][idx-1])/(data['x'][idx]-data['x'][idx-1]));
+                //var angle = Math.atan2((data['y'][idx]-data['y'][idx-1])/data['y'][idx-1],(data['x'][idx]-data['x'][idx-1])/data['x'][idx-1]);
                 //lable['angle'] = angle;
-                lable['angle'] = Math.atan((data['y'][idx]-data['y'][idx-1])/(data['x'][idx]-data['x'][idx-1]));
+                //lable['x_offset']=0.1*data['x'][idx];
+                lable['y_offset']=0.1*data['y'][idx];
                 lable.change.emit();
                 """
                 )
                 slider[j].js_on_change('value', callback[j])
-            #slider=Slider(start=0,end=10,value=1,step=1,title='test')
 
 
             #allplots = dict(areaplots.items()|lineplots.items()|bgplots.items()|bgareaplots.items())
             allplots = dict(lineplots.items()|bgplots.items())
             
-            #Plot Range
-            #xmin, xmax, ymin, ymax = min(xmin,focus.x.min()), max(xmax,focus.x.max()),\
-            #                         min(ymin,focus.y.min()), max(ymax,focus.y.max())
-            #self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
-            xmin, xmax, ymin, ymax = 5e-1,1e4,1e-50,1e-36
-            self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
+            
 
             #Add labels /testing
             self.fig.add_layout(labels[j])
-            #self.fig = column(self.fig, slider)
 
             
         self.draw(allplots,slider,massunit)
@@ -271,8 +267,10 @@ class DMplotter():
         
         show(column(fig,column(slider, width=100)))
         '''
+        sliders=[]
         for key in slider:
-            fig = column(fig, slider[key])
+            sliders.append(slider[key])
+        fig = row(fig,column(sliders,sizing_mode="fixed", height=600, width=200),sizing_mode="stretch_both")
 
         output_file(filename="DarkPlotter.html", title="WIMP Exclusion Plot")
         show(fig)
