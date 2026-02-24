@@ -1,61 +1,47 @@
-
 from bokeh.plotting import figure, output_file, show,output_notebook,curdoc,save
 from bokeh.models import Range1d, ColumnDataSource, Column, Select, CustomJS, MultiSelect,CheckboxGroup,CheckboxGroup,LabelSet,LinearAxis,LogAxis,Slider,Label,Dropdown
 from bokeh.models.glyphs import Line
 from bokeh.models import Legend
 from bokeh.themes import Theme
 from bokeh.layouts import column, row
-import pandas as pd
 from bokeh.io import curdoc
 from bokeh.palettes import Category10
+
+import pandas as pd
 import requests
 from pprint import pprint
 from pandas.io.json import json_normalize
 import ssl
 import json
-from bokeh.palettes import Category10
 from bs4 import BeautifulSoup as bs
-import requests
 import numpy as np
-import pandas as pd
 import sys
+import os
 output_notebook(hide_banner=True)
+
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
 class DMdata():
-    def __init__(self):
-        self.url    = 'https://github.com/odadoun/DarkPlotter/tree/dev/json/'
-        self.rawurl = 'https://raw.githubusercontent.com/odadoun/DarkPlotter/dev/json/'
+    def __init__(self,**kwargs):
+        self.path = kwargs.get('path','./json')
         self.mypandas = pd.DataFrame()
+        self.uploaddata(path=self.path)
 
-    def githubpath2raw(self,**kwargs):
-        url = kwargs.get('url',self.url)
-        urlraw = self.rawurl
-        res = requests.get(url)
-        soup = bs(res.text, 'lxml')
-        nav = soup.find_all('a',class_="js-navigation-open")
-        files = [ i.text for i in nav if '.json' in i.text  ]
-        if files:
-            path = [ urlraw + i for i in files ]
-        else:
-            raise Exception('Nothing to parse in this folder ...')
-        exp_pd=pd.DataFrame({'rawurl':path})
-        return exp_pd
-
-    def uploadexperiement(self,**kwargs):
-        default = self.rawurl + 'SI-CDMS-CDMS%20II%2C%20Reanalysis%20LT-5c87c458d484949dedf45757e811d495.json'
-        url = kwargs.get('url',default)
-        if not isinstance(url,list):
-            url=[url]
-        for i in url:
-            tmp = pd.read_json(i.replace(' ','%20'))
+    def uploaddata(self,**kwargs):
+        path = kwargs.get('path')
+        files = []
+        for dirpath,_,filenames in os.walk(path):
+            for f in filenames:
+                files.append(os.path.abspath(os.path.join(dirpath, f)))
+        for ifile in files:
+            tmp = pd.read_json(ifile)
             tmp = tmp.apply(lambda x: x.to_list() if x.name in ['x','y'] else x[0])
             if self.mypandas.empty:
                 self.mypandas = pd.DataFrame(data={i:[tmp[i]] for i in tmp.index})
             else:
-                if tmp['experiment'] not in self.mypandas.experiment.to_list():
-                    self.mypandas = pd.concat([self.mypandas,pd.DataFrame(data={i:[tmp[i]] for i in tmp.index})])
+#                if tmp['experiment'] not in self.mypandas.experiment.to_list():
+                self.mypandas = pd.concat([self.mypandas,pd.DataFrame(data={i:[tmp[i]] for i in tmp.index})])
         self.mypandas = self.mypandas.loc[~self.mypandas['experiment'].isin([''])]
 
     def get_metadata(self):
@@ -67,7 +53,8 @@ class DMdata():
     def get_pandas(self):
         return self.mypandas.set_index("experiment")
 
-    def get_experiment(self,collaboration="",experiment=""):
+    def get_experiment(self,collaboration="",experiment="",label=""):
+            
         if collaboration == "":
             collab = self.mypandas
             if experiment == "":
@@ -81,11 +68,16 @@ class DMdata():
             else :
                 exp = collab[collab["experiment"].apply(lambda x : any(k in x for k in experiment))]
 
+        if label != "":
+            collab = self.mypandas
+            exp = collab[collab["label"].apply(lambda x : any(k in x for k in label))]
+                
         if len(exp["experiment"].value_counts()) > 0:
             return exp
         else:
             print ("Warning: no experiment exist")
             sys.exit()
+
 
 
 class DMplotter():
@@ -101,13 +93,15 @@ class DMplotter():
     def plot(self,mypandas=None,massunit="GeV"):
         mypd = mypandas
         TOOLS = "pan,wheel_zoom,reset,save"
-        self.fig = figure(plot_width=1200, plot_height=600,tooltips=self.tooltips, tools=TOOLS,x_axis_type="log",y_axis_type='log',sizing_mode="scale_width",height=600, width=1200)
+        self.fig = figure(plot_width=1200, plot_height=600,tooltips=self.tooltips, tools=TOOLS,x_axis_type="log",y_axis_type='log',sizing_mode="scale_width")
         if not isinstance(mypandas,list):
             mypd =[ mypandas ]
         mypd = pd.concat(mypd)
-        if mypd.index.name == 'experiment':
-            mypd = mypd.reset_index()
-        experiments=mypd.experiment.unique()
+
+#        if mypd.index.name == 'experiment':
+#            mypd = mypd.reset_index()
+#        experiments=mypd.experiment.unique()
+#        print(experiments)
         xmax, ymax = 2*[-1.]
         xmin, ymin = 2*[1.e6]
         xunit = massunit
@@ -132,76 +126,83 @@ class DMplotter():
         else:
             print("Please choose correct massunit")
             sys.exit()
-        
-        for i,j in enumerate(experiments):
-            focus=mypd.loc[mypd.experiment==j]
-            #print(focus['y-units'].item())
-            if focus['y-units'].item() == 'fb':
-                yscale = 1.E-39
-            if focus['y-units'].item() == 'cm^2':
-                yscale = 1.
-            if focus['y-units'].item() == 'pb':
-                yscale = 1.E-36
-            if focus['y-units'].item() == 'zb':
-                yscale = 1.E-45
-            if focus['y-units'].item() == 'ub':
-                yscale = 1.E-30
-            if focus['x-units'].item() == 'MeV':
-                xscale = 1e-3
-            if focus['x-units'].item() == 'GeV':
-                xscale = 1
-            if focus['x-units'].item() == 'TeV':
-                xscale = 1e3
-            for i, s in enumerate(focus.y.item()):
-                focus.y.item()[i] = s*yscale
-            for i, s in enumerate(focus.x.item()):
-                focus.x.item()[i] = s*zoom*xscale
             
-            focus=focus.explode(['x','y'])
+        focus=mypd.loc[mypd.experiment=="LZ"]
+#        print(focus)
+
+        for index,row in mypd.iterrows():
+
+            print("-----",row["label"])
+            
+            if row['y-units'] == 'fb':
+                yscale = 1.E-39
+            if row['y-units'] == 'cm^2' or row['y-units'] == 'cm2':
+                yscale = 1.
+            if row['y-units'] == 'pb':
+                yscale = 1.E-36
+            if row['y-units'] == 'zb':
+                yscale = 1.E-45
+            if row['y-units'] == 'ub':
+                yscale = 1.E-30
+            if row['x-units'] == 'MeV':
+                xscale = 1e-3
+            if row['x-units'] == 'GeV':
+                xscale = 1
+            if row['x-units'] == 'TeV':
+                xscale = 1e3
+            for i, s in enumerate(row.y):
+                row.y[i] = s*yscale
+            for i, s in enumerate(row.x):
+                row.x[i] = s*zoom*xscale
+
+            rowxy = {'x': row['x'], 'y': row['y']}
 
             #Plot Range
             #xmin, xmax, ymin, ymax = min(xmin,focus.x.min()), max(xmax,focus.x.max()),\
             #                         min(ymin,focus.y.min()), max(ymax,focus.y.max())
             #self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
-            xmin, xmax, ymin, ymax = 5e-1,1e4,1e-50,1e-36
-            self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
+            if self.figlimits == {}:
+                self.figlimits = {'xmin':5e-1, 'xmax':1e3, 'ymin':1e-50, 'ymax':1e-43}
 
-
+            label = row["label"]
             #Plot area & neutrino background /testing
             #Plot Labels & slider /testing
-            if mypd.loc[mypd.experiment==j]['category'].item()  == "Background":
-                bgareaplots[j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.4,name=j,source = ColumnDataSource(focus))
-                bgplots[j]=self.fig.line(x = 'x', y = 'y',line_width=6,line_color="red",line_alpha=1,name=j,source = ColumnDataSource(focus),line_dash="dashed")
-                labels[j] = Label(x=0.6,y=1e-49, text=j,x_offset=0, y_offset=0,
+            if row['category']  == "Background":
+                bgareaplots[label]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-50,fill_color="yellow",fill_alpha=0.4,name=label,source = ColumnDataSource(rowxy))
+                bgplots[label]=self.fig.line(x = 'x', y = 'y',line_width=1,line_color="yellow",line_alpha=0.8,name=label,source = ColumnDataSource(rowxy),line_dash="dashed")
+                labels[label] = Label(x=0.6,y=1e-49, text=label,x_offset=0, y_offset=0,
                  text_font='arial',text_font_size='12pt',text_color="black",text_font_style="bold",render_mode='canvas')
-            elif mypd.loc[mypd.experiment==j]['category'].item()  == "Limit":    
-                areaplots["Area"+j]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color=(232,243,226),fill_alpha=1,name=j,source = ColumnDataSource(focus))
-                areaplots["Area"+j].level= 'underlay'
-                lineplots[j]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],\
-                        name=j,source = ColumnDataSource(focus))
+            elif row['category']  == "Limit":    
+                areaplots["Area"+label]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color=(232,243,226),fill_alpha=1,name=label,source = ColumnDataSource(rowxy))
+                areaplots["Area"+label].level= 'underlay'
+                lineplots[label]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],name=label,source = ColumnDataSource(rowxy))
+            elif row['category']  == "Sensitivity":
+                lineplots[label]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],name=label,source = ColumnDataSource(rowxy), line_dash='dashed')
 
-                #Adding Sliders
-                #slider[j]=Slider(start=0.5*focus.x.min(),end=2*focus.x.max(),value=focus.x.max(),step=-0.05*(focus.x.min()-focus.x.max()),title=j)
-                slider[j]=Slider(start=1,end=len(focus.x),value=len(focus.x),step=1,title=j, sizing_mode="stretch_both")
-                #Adding Labels
-                labels[j] = Label(x=focus.x.max(),y=(focus.y.iloc[-1]), text=j,x_offset=0, y_offset=0,
-                 text_font='arial',text_color=palette[i%nbcolors],text_font_size='12pt', angle=theta,render_mode='canvas',text_align="left")
-                #Adding Link/Call back
-                callback[j]=CustomJS(args=dict(source=ColumnDataSource(focus),xposition=slider[j],lable=labels[j]),
-                            code = """
+            #Adding Sliders
+            #slider[label]=Slider(start=0.5*focus.x.min(),end=2*focus.x.max(),value=focus.x.max(),step=-0.05*(focus.x.min()-focus.x.max()),title=label)
+            slider[label]=Slider(start=1,end=len(rowxy['x']),value=len(rowxy['x']),step=1,title=label, sizing_mode="stretch_both")
+            #Adding Labels
+            labels[label] = Label(x=max(rowxy['x']),y=(rowxy['y'][-1]), text=label,x_offset=0, y_offset=0,
+                                  text_font='arial',text_font_style="bold",text_color=palette[i%nbcolors],text_font_size='12pt', angle=theta,render_mode='canvas',text_align="left")
+            #Adding Link/Call back
+            callback[label]=CustomJS(args=dict(source=ColumnDataSource(rowxy),xposition=slider[label],lable=labels[label]),
+                                     code = """
                 const data = source.data;
                 var idx = xposition.value;
                 lable['x'] = data['x'][idx];
                 lable['y'] = 1.1*data['y'][idx];
                 //var angle = Math.atan(slope(data['x'][idx-1],data['y'][idx-1],data['x'][idx],data['y'][idx]));
                 //var angle = Math.atan2((data['y'][idx]-data['y'][idx-1])/data['y'][idx-1],(data['x'][idx]-data['x'][idx-1])/data['x'][idx-1]);
-                //lable['angle'] = angle;
-                //lable['x_offset']=0.1*data['x'][idx];
-                lable['y_offset']=0.1*data['y'][idx];
+                var angle = Math.atan2(Math.log10(data['y'][idx])-Math.log10(data['y'][idx-1]),Math.log10(data['x'][idx])-Math.log10(data['x'][idx-1]));
+                //var angle = Math.atan2((data['x'][idx]/data['y'][idx])*(data['y'][idx]-data['y'][idx-1])/(data['x'][idx]-data['x'][idx-1]),1);
+                lable['angle'] = angle/3;
+//                lable['x_offset']=0.1*data['x'][idx];
+ //               lable['y_offset']=0.1*data['y'][idx];
                 lable.change.emit();
                 """
-                )
-                slider[j].js_on_change('value', callback[j])
+            )
+            slider[label].js_on_change('value', callback[label])
 
 
             #allplots = dict(areaplots.items()|lineplots.items()|bgplots.items()|bgareaplots.items())
@@ -210,7 +211,7 @@ class DMplotter():
             
 
             #Add labels /testing
-            self.fig.add_layout(labels[j])
+            self.fig.add_layout(labels[label])
 
             
         self.draw(allplots,slider,massunit)
@@ -270,7 +271,7 @@ class DMplotter():
         sliders=[]
         for key in slider:
             sliders.append(slider[key])
-        fig = row(fig,column(sliders,sizing_mode="fixed", height=600, width=200),sizing_mode="stretch_both")
+        fig = row(fig,column(sliders,sizing_mode="fixed", height=600, width=100),sizing_mode="stretch_both")
 
         output_file(filename="DarkPlotter.html", title="WIMP Exclusion Plot")
         show(fig)
