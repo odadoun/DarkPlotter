@@ -6,6 +6,7 @@ from bokeh.themes import Theme
 from bokeh.layouts import column, row
 from bokeh.io import curdoc
 from bokeh.palettes import Category10
+from bokeh.models import FixedTicker
 
 import pandas as pd
 import requests
@@ -70,7 +71,8 @@ class DMdata():
 
         if label != "":
             collab = self.mypandas
-            exp = collab[collab["label"].apply(lambda x : any(k in x for k in label))]
+#            exp = collab[collab["label"].apply(lambda x : any(k in x for k in label))]
+            exp = collab[collab["label"].isin(label)]
                 
         if len(exp["experiment"].value_counts()) > 0:
             return exp
@@ -93,11 +95,10 @@ class DMplotter():
     def plot(self,mypandas=None,massunit="GeV"):
         mypd = mypandas
         TOOLS = "pan,wheel_zoom,reset,save"
-        self.fig = figure(plot_width=1200, plot_height=600,tooltips=self.tooltips, tools=TOOLS,x_axis_type="log",y_axis_type='log',sizing_mode="scale_width")
+        self.fig = figure(plot_width=1200, plot_height=600,tooltips=self.tooltips, tools=TOOLS,x_axis_type="log",y_axis_type='log',sizing_mode="scale_width",outline_line_color='black', outline_line_width=1)
         if not isinstance(mypandas,list):
             mypd =[ mypandas ]
         mypd = pd.concat(mypd)
-
 #        if mypd.index.name == 'experiment':
 #            mypd = mypd.reset_index()
 #        experiments=mypd.experiment.unique()
@@ -129,6 +130,8 @@ class DMplotter():
             
         focus=mypd.loc[mypd.experiment=="LZ"]
 #        print(focus)
+
+        icolor = 0
 
         for index,row in mypd.iterrows():
 
@@ -163,7 +166,6 @@ class DMplotter():
             #self.figlimits = {'xmin':xmin, 'xmax':xmax, 'ymin':ymin, 'ymax':ymax}
             if self.figlimits == {}:
                 self.figlimits = {'xmin':5e-1, 'xmax':1e3, 'ymin':1e-50, 'ymax':1e-43}
-
             label = row["label"]
             #Plot area & neutrino background /testing
             #Plot Labels & slider /testing
@@ -175,30 +177,31 @@ class DMplotter():
             elif row['category']  == "Limit":    
                 areaplots["Area"+label]=self.fig.varea(x = 'x', y1 = 'y', y2 =1e-10,fill_color=(232,243,226),fill_alpha=1,name=label,source = ColumnDataSource(rowxy))
                 areaplots["Area"+label].level= 'underlay'
-                lineplots[label]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],name=label,source = ColumnDataSource(rowxy))
+                lineplots[label]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[icolor%nbcolors],name=label,source = ColumnDataSource(rowxy))
             elif row['category']  == "Sensitivity":
-                lineplots[label]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[i%nbcolors],name=label,source = ColumnDataSource(rowxy), line_dash='dashed')
+                lineplots[label]=self.fig.line(x = 'x', y = 'y', line_width=2,line_color=palette[icolor%nbcolors],name=label,source = ColumnDataSource(rowxy), line_dash='dashed')
 
             #Adding Sliders
             #slider[label]=Slider(start=0.5*focus.x.min(),end=2*focus.x.max(),value=focus.x.max(),step=-0.05*(focus.x.min()-focus.x.max()),title=label)
             slider[label]=Slider(start=1,end=len(rowxy['x']),value=len(rowxy['x']),step=1,title=label, sizing_mode="stretch_both")
             #Adding Labels
-            labels[label] = Label(x=max(rowxy['x']),y=(rowxy['y'][-1]), text=label,x_offset=0, y_offset=0,
-                                  text_font='arial',text_font_style="bold",text_color=palette[i%nbcolors],text_font_size='12pt', angle=theta,render_mode='canvas',text_align="left")
+            labels[label] = Label(x=max(rowxy['x']),y=(rowxy['y'][-1]), text=label,x_offset=0, y_offset=0, text_font='arial',text_font_style="bold",text_color=palette[icolor%nbcolors],text_font_size='12pt', angle=theta,render_mode='canvas',text_align="left")
             #Adding Link/Call back
-            callback[label]=CustomJS(args=dict(source=ColumnDataSource(rowxy),xposition=slider[label],lable=labels[label]),
+            labels[label].text_align = "right"
+            callback[label]=CustomJS(args=dict(source=ColumnDataSource(rowxy),xposition=slider[label],lable=labels[label],plot=self.fig),
                                      code = """
                 const data = source.data;
                 var idx = xposition.value;
-                lable['x'] = data['x'][idx];
-                lable['y'] = 1.1*data['y'][idx];
-                //var angle = Math.atan(slope(data['x'][idx-1],data['y'][idx-1],data['x'][idx],data['y'][idx]));
-                //var angle = Math.atan2((data['y'][idx]-data['y'][idx-1])/data['y'][idx-1],(data['x'][idx]-data['x'][idx-1])/data['x'][idx-1]);
+                var x = data['x'][idx];
+                var y = data['y'][idx];
                 var angle = Math.atan2(Math.log10(data['y'][idx])-Math.log10(data['y'][idx-1]),Math.log10(data['x'][idx])-Math.log10(data['x'][idx-1]));
-                //var angle = Math.atan2((data['x'][idx]/data['y'][idx])*(data['y'][idx]-data['y'][idx-1])/(data['x'][idx]-data['x'][idx-1]),1);
-                lable['angle'] = angle/3;
-//                lable['x_offset']=0.1*data['x'][idx];
- //               lable['y_offset']=0.1*data['y'][idx];
+                lable['angle'] = 0; //angle/3;
+                lable['x'] = 0.85*x;
+                lable['y'] = 0.85*y;
+//                lable['x'] = x;
+//                lable['y'] = y;
+//              lable['x_offset']=0.1*data['x'][idx];
+//              lable['y_offset']=0.1*data['y'][idx];
                 lable.change.emit();
                 """
             )
@@ -212,7 +215,7 @@ class DMplotter():
 
             #Add labels /testing
             self.fig.add_layout(labels[label])
-
+            icolor = icolor + 1
             
         self.draw(allplots,slider,massunit)
 
@@ -227,10 +230,10 @@ class DMplotter():
         fig.add_layout(LogAxis(y_range_name="pb",axis_label=r"WIMP-Nucleon Cross Section [pb]"),'right')
         #fig.yaxis.major_label_orientation = "vertical"        
         fig.axis.axis_label_text_font = 'times' #aixs label font
-        fig.axis.axis_label_text_font_size = '12pt'#axis label font size
+        fig.axis.axis_label_text_font_size = '16pt'#axis label font size
         fig.axis.axis_label_text_font_style = 'bold' #axis label font style
-        fig.axis.major_label_text_font_size = '11pt' #Tick label size
-        
+        fig.axis.major_label_text_font_size = '15pt' #Tick label size
+        fig.xaxis.ticker = FixedTicker(ticks=[0.1,0.2,0.5,1,2,3,4,5,10,100,1000])
         
         #Plot Legend
         legend_it=[]
